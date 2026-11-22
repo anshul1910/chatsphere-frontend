@@ -1,29 +1,22 @@
-import { useEffect, useState } from "react";
-import { getHealth, type HealthResponse } from "./api/health";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { LoginPage, RegisterPage, HomePage } from "./pages";
+import { ProtectedRoute } from "./components/routes/ProtectedRoute";
+import { PublicOnlyRoute } from "./components/routes/PublicOnlyRoute";
 
 function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    getHealth()
-      .then(setHealth)
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Unknown error");
-      });
-  }, []);
-
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-indigo-600">ChatSphere</h1>
-      {error && <p>Error: {error}</p>}
-      {!error && !health && <p>Checking server...</p>}
-      {health && (
-        <p>
-          Server status: {health.status} ({health.timestamp})
-        </p>
-      )}
-    </div>
+    <Routes>
+      <Route element={<PublicOnlyRoute />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+      </Route>
+
+      <Route element={<ProtectedRoute />}>
+        <Route path="/" element={<HomePage />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
