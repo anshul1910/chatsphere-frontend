@@ -26,6 +26,7 @@
   --color-field: var(--inp);
   --color-ok: var(--ok);
   --color-danger: var(--err);
+  --color-scrim: var(--scrim);
 }
 
 /* Light theme (default values) */
@@ -43,6 +44,7 @@
   --ok: #059669;
   --err: #e11d48;
   --shadow: 0 20px 50px rgba(88, 70, 180, 0.18);
+  --scrim: rgba(26, 23, 53, 0.35);
   --orb-opacity: 0.42;
 }
 
@@ -61,6 +63,7 @@
   --ok: #34d399;
   --err: #fb7185;
   --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  --scrim: rgba(6, 5, 18, 0.62);
   --orb-opacity: 0.5;
 }
 
@@ -139,6 +142,16 @@ body {
   --animate-fade-up: fade-up 0.5s var(--ease-smooth) both;
   --animate-pop-in: pop-in 0.4s var(--ease-smooth) both;
   --animate-message-in: message-in 0.32s var(--ease-smooth) both;
+  --animate-fade-in: fade-in 0.2s ease-out both;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 
   @keyframes fade-up {
     from {

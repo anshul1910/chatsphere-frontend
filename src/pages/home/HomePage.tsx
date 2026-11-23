@@ -1,10 +1,15 @@
+import { useState } from "react";
 import { Button } from "../../components/common/Button";
 import { Logo } from "../../components/common/Logo";
 import { ThemeToggle } from "../../components/common/ThemeToggle";
 import { useAuth } from "../../hooks/useAuth";
+import { UserSearchModal } from "../../components/users/UserSearchModal";
+import { ProfileModal } from "../../components/users/ProfileModal";
 
 export function HomePage() {
   const { user, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   return (
     <div className="relative grid min-h-screen place-items-center overflow-hidden p-6">
@@ -27,8 +32,23 @@ export function HomePage() {
           <Button variant="glass" onClick={logout}>
             Log out
           </Button>
+          <Button onClick={() => setOpen(true)}>Find people</Button>
+          <Button variant="glass" onClick={() => setProfileOpen(true)}>
+            Profile
+          </Button>
         </div>
       </div>
+
+      <UserSearchModal
+        open={open}
+        onClose={() => setOpen(false)}
+        onSelect={(selected) => {
+          console.log("Selected user:", selected);
+          setOpen(false);
+        }}
+      />
+
+      <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
     </div>
   );
 }
