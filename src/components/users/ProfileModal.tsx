@@ -1,4 +1,10 @@
-import { useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import { userService } from "../../api/services";
 import { useAuth } from "../../hooks/useAuth";
 import { getErrorMessage } from "../../utils/getErrorMessage";
@@ -12,50 +18,89 @@ interface ProfileModalProps {
   onClose: () => void;
 }
 
-interface FieldErrors {
-  username?: string;
-  avatar?: string;
-}
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-function validate(username: string, avatar: string): FieldErrors {
-  const errors: FieldErrors = {};
+function validateUsername(username: string): string | undefined {
   const name = username.trim();
-
   if (name.length < 3 || name.length > 30) {
-    errors.username = "Username must be 3 to 30 characters.";
+    return "Username must be 3 to 30 characters.";
   }
-  if (avatar.trim() !== "" && !/^https?:\/\/\S+$/i.test(avatar.trim())) {
-    errors.avatar = "Use a link starting with http:// or https://";
-  }
-  return errors;
+  return undefined;
 }
 
 function ProfileForm({ onClose }: { onClose: () => void }) {
   const { user, updateUser } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [username, setUsername] = useState(user?.username ?? "");
-  const [avatar, setAvatar] = useState(user?.avatar ?? "");
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [removed, setRemoved] = useState(false);
+  const [usernameError, setUsernameError] = useState<string>();
+  const [fileError, setFileError] = useState<string>();
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const picked = event.target.files?.[0];
+    event.target.value = ""; // lets the user re-pick the same file later
+    if (!picked) return;
+
+    if (!ALLOWED_TYPES.includes(picked.type)) {
+      setFileError("Choose a JPG, PNG or WebP image.");
+      return;
+    }
+    if (picked.size > MAX_AVATAR_BYTES) {
+      setFileError("Image must be 2 MB or smaller.");
+      return;
+    }
+
+    setFileError(undefined);
+    setFile(picked);
+    setPreviewUrl(URL.createObjectURL(picked));
+    setRemoved(false);
+  }
+
+  function handleRemove() {
+    setFile(null);
+    setPreviewUrl(null);
+    setFileError(undefined);
+    setRemoved(true);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!user) return;
 
-    const errors = validate(username, avatar);
-    setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+    const error = validateUsername(username);
+    setUsernameError(error);
+    if (error) return;
 
     setFormError(null);
     setIsSaving(true);
     try {
-      const res = await userService.updateProfile({
-        username: username.trim(),
-        avatar: avatar.trim(),
-      });
-      updateUser(res.user);
+      const name = username.trim();
+
+      if (file) {
+        const res = await userService.uploadAvatar(file);
+        updateUser(res.user);
+      }
+      if (removed || name !== user.username) {
+        const res = await userService.updateProfile(
+          removed ? { username: name, avatar: "" } : { username: name },
+        );
+        updateUser(res.user);
+      }
       onClose();
-    } catch (error) {
-      setFormError(getErrorMessage(error));
+    } catch (err) {
+      setFormError(getErrorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -63,19 +108,45 @@ function ProfileForm({ onClose }: { onClose: () => void }) {
 
   if (!user) return null;
 
+  const shownSrc = previewUrl ?? (removed ? "" : user.avatar);
+
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-      <div className="flex flex-col items-center gap-2 pb-2">
+      <div className="flex flex-col items-center gap-3 pb-2">
         <Avatar
-          username={
-            avatar.trim()
-              ? username || user.username
-              : username || user.username
-          }
-          src={avatar.trim()}
+          key={shownSrc}
+          username={username.trim() || user.username}
+          src={shownSrc}
           size="lg"
         />
         <p className="text-sm text-fg-3">{user.email}</p>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="glass"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            Choose photo
+          </Button>
+          {shownSrc && (
+            <Button type="button" variant="glass" onClick={handleRemove}>
+              Remove photo
+            </Button>
+          )}
+        </div>
+        {fileError && (
+          <p role="alert" className="text-sm text-danger">
+            {fileError}
+          </p>
+        )}
       </div>
 
       <TextField
@@ -83,15 +154,7 @@ function ProfileForm({ onClose }: { onClose: () => void }) {
         autoComplete="username"
         value={username}
         onChange={(event) => setUsername(event.target.value)}
-        error={fieldErrors.username}
-      />
-      <TextField
-        label="Avatar link (optional)"
-        type="url"
-        placeholder="https://example.com/me.png"
-        value={avatar}
-        onChange={(event) => setAvatar(event.target.value)}
-        error={fieldErrors.avatar}
+        error={usernameError}
       />
 
       {formError && (

@@ -28,4 +28,13 @@ export const userService = {
       payload,
     );
   },
+
+  uploadAvatar(file: File): Promise<MeResponse> {
+    const formData = new FormData();
+    formData.append("avatar", file);
+    return apiService.post<MeResponse, FormData>(
+      API_ENDPOINTS.USERS.AVATAR,
+      formData,
+    );
+  },
 };

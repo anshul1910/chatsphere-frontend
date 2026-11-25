@@ -1,4 +1,3 @@
-// What other people are allowed to see (no email)
 export interface PublicUser {
   id: string;
   username: string;

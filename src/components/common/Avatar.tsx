@@ -45,7 +45,7 @@ export function Avatar({ username, src, size = "md", online }: AvatarProps) {
           src={src}
           alt={username}
           onError={() => setFailed(true)}
-          className="size-full rounded-full object-cover"
+          className="absolute inset-0 size-full rounded-full object-cover"
         />
       ) : (
         <span aria-hidden="true">{username.slice(0, 2).toUpperCase()}</span>
